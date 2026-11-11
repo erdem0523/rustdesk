@@ -2494,16 +2494,29 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
 
 // POSbim: custom client config is embedded in the binary, so no signed
 // `custom.txt` and no external file next to the executable is required.
-pub const POSBIM_CUSTOM_CLIENT: &str = r#"{
-  "app-name": "POSbim Remote",
-  "custom-rendezvous-server": "158.180.57.15",
-  "relay-server": "158.180.57.15:21117",
-  "api-server": "http://158.180.57.15:21114",
-  "key": "AeOhS0P79mGdJAyWjNyDZeBWfnbHyYJRIwWTw9hxfgc="
-}"#;
+// NOTE: In this version plain top-level keys of the custom config only land in
+// HARD_SETTINGS, which `Config::get_option` does not read, so the server
+// settings are applied explicitly through `LocalConfig::set_option`.
+pub const POSBIM_RENDEZVOUS_SERVER: &str = "158.180.57.15";
+pub const POSBIM_RELAY_SERVER: &str = "158.180.57.15:21117";
+pub const POSBIM_API_SERVER: &str = "http://158.180.57.15:21114";
+pub const POSBIM_KEY: &str = "AeOhS0P79mGdJAyWjNyDZeBWfnbHyYJRIwWTw9hxfgc=";
 
 pub fn load_custom_client() {
+    const POSBIM_CUSTOM_CLIENT: &str = r#"{
+  "app-name": "POSbim Remote"
+}"#;
     read_custom_client(POSBIM_CUSTOM_CLIENT);
+    for (k, v) in [
+        ("custom-rendezvous-server", POSBIM_RENDEZVOUS_SERVER),
+        ("relay-server", POSBIM_RELAY_SERVER),
+        ("api-server", POSBIM_API_SERVER),
+        ("key", POSBIM_KEY),
+    ] {
+        if config::LocalConfig::get_option(k) != v {
+            config::LocalConfig::set_option(k.to_owned(), v.to_owned());
+        }
+    }
 }
 
 fn read_custom_client_advanced_settings(
