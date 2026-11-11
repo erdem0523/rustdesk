@@ -60,9 +60,17 @@ jobs:
       - name: Patch flutter
         shell: bash
         run: |
-          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          PATCH=flutter_3.24.4_dropdown_menu_enableFilter.diff
           cd $(dirname $(dirname $(which flutter)))
-          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          cp "$GITHUB_WORKSPACE/.github/patches/$PATCH" .
+          # The flutter SDK comes from the action cache, which may already contain
+          # the patch from a previous run -> apply only when it is really missing.
+          if git apply --reverse --check "$PATCH" >/dev/null 2>&1; then
+            echo "Flutter patch already applied (cached SDK) - skipping"
+          else
+            git apply "$PATCH"
+            echo "Flutter patch applied"
+          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
