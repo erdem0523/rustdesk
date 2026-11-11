@@ -2507,16 +2507,30 @@ pub fn load_custom_client() {
   "app-name": "POSbim Remote"
 }"#;
     read_custom_client(POSBIM_CUSTOM_CLIENT);
-    for (k, v) in [
+    // Server settings must live in the OVERWRITE maps: `get_option` consults them
+    // before the persisted config file, plain custom client keys only end up in
+    // HARD_SETTINGS (which `get_option` never reads) and `set_option` is not
+    // reliable this early during startup (APP_DIR / config dir may not exist yet).
+    let settings = [
         ("custom-rendezvous-server", POSBIM_RENDEZVOUS_SERVER),
         ("relay-server", POSBIM_RELAY_SERVER),
         ("api-server", POSBIM_API_SERVER),
         ("key", POSBIM_KEY),
-    ] {
-        if config::LocalConfig::get_option(k) != v {
-            config::LocalConfig::set_option(k.to_owned(), v.to_owned());
+    ];
+    {
+        let mut local_overrides = config::OVERWRITE_LOCAL_SETTINGS.write().unwrap();
+        let mut server_overrides = config::OVERWRITE_SETTINGS.write().unwrap();
+        for (k, v) in settings.iter() {
+            local_overrides.insert(k.to_string(), v.to_string());
+            server_overrides.insert(k.to_string(), v.to_string());
         }
     }
+    log::info!(
+        "POSbim server settings applied: {} / relay {} / api {}",
+        POSBIM_RENDEZVOUS_SERVER,
+        POSBIM_RELAY_SERVER,
+        POSBIM_API_SERVER
+    );
 }
 
 fn read_custom_client_advanced_settings(
